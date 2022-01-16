@@ -290,9 +290,13 @@ window.addEventListener("load", function() {
     },
     dPadNavListener: {
       arrowUp: function() {
+        if (this.verticalNavIndex <= 0)
+          return;
         this.navigateListNav(-1);
       },
       arrowDown: function() {
+        if (this.verticalNavIndex === this.data.categories.length - 1)
+          return
         this.navigateListNav(1);
       }
     }
