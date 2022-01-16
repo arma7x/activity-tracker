@@ -500,8 +500,8 @@ window.addEventListener("load", function() {
           if (data) {
             for (var x in data) {
               const y = data[x];
-              //if (y['finish'] > 0)
-              //  continue;
+              if (y['finish'] > 0)
+                continue;
               if (categories[y['category']] != null) {
                 y['category'] = categories[y['category']];
                 y['category']['text'] = y['category']['name'];
@@ -546,7 +546,7 @@ window.addEventListener("load", function() {
           if (xtvt) {
             var menu = [
               {'text': 'Edit'},
-              {'text': 'Delete'},
+              {'text': 'DELETE'},
               {'text': 'QUIT'},
             ]
             this.$router.showOptionMenu('ACTION', menu, 'SELECT', (selected) => {
@@ -584,9 +584,9 @@ window.addEventListener("load", function() {
                     }, 100);
                   });
                 }, 120);
-              } else if (selected.text === 'Delete') {
+              } else if (selected.text === 'DELETE') {
                 setTimeout(() => {
-                  this.$router.showDialog('Delete Confirmation', `<span>Are you sure to <b>delete</b> this activity ?</span>`, null, 'Yes', () => {
+                  this.$router.showDialog('DELETE Confirmation', `<span>Are you sure to <b>DELETE</b> this activity ?</span>`, null, 'Yes', () => {
                     try {
                       localforage.getItem(ACTIVITY_TABLE)
                       .then((db) => {
