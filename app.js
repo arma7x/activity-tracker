@@ -1,6 +1,7 @@
 const APP_VERSION = "1.0.0";
 const ACTIVITY_TABLE = 'ACTIVITY_LOGS';
 const CATEGORY_TABLE = 'CATEGORIES';
+const DEFAULT_CATEGORY = {'id': 'General', 'name': 'General', 'text': 'General', color: '#320374'};
 
 const setAlarm = function(data = {}) {
   var alarmId;
@@ -8,12 +9,12 @@ const setAlarm = function(data = {}) {
   date.setMinutes(date.getMinutes() + 1);
   console.log(date.toString());
   var addRequest = navigator.mozAlarms.add(date, 'honorTimezone', data);
-  addRequest.onsuccess = function(res) {
+  addRequest.onsuccess = (res) => {
     alarmId = res.target.result;
     // data['activity_id']
     // localforage.get(ACTIVITY_TABLE) -> data['activity_id'] -> alarm_id;
   };
-  addRequest.onerrors = function(err) {
+  addRequest.onerrors = (err) => {
     console.log(err);
   };
 }
@@ -302,6 +303,130 @@ window.addEventListener("load", function() {
     }
   });
 
+  const activitytEditor = function($router, activity = null) {
+    const mutable = activity ? activity.finish === 0 : true;
+    const categories = [DEFAULT_CATEGORY];
+    const loops = state.getState(CATEGORY_TABLE);
+    for (var c in loops) {
+      loops[c]['text'] = loops[c]['name'];
+      categories.push(loops[c]);
+    }
+    $router.push(
+      new Kai({
+        name: 'activitytEditor',
+        data: {
+          description: activity ? activity.description : '',
+          category: activity ? activity.category : categories[0],
+          reminder: 0,
+          mutable: mutable,
+          isEdit: activity !== null,
+        },
+        verticalNavClass: '.editorXtvtNav',
+        templateUrl: document.location.origin + '/templates/activitytEditor.html',
+        mounted: function() {
+          this.$router.setHeaderTitle('Activity Editor');
+        },
+        unmounted: function() {},
+        methods: {
+          selectCategory: function() {
+            const idx = categories.findIndex((opt) => {
+              return opt.text === this.data.category.text;
+            });
+            this.$router.showSingleSelector('Category', categories, 'Select', (selected) => {
+              this.setData({
+                description: document.getElementById('description').value,
+                reminder: document.getElementById('reminder') ? document.getElementById('reminder').value : 0,
+                category: selected
+              });
+            }, 'Cancel', null, undefined, idx);
+          },
+          submit: function() {
+            const t = new Date();
+            var _activity = {
+              id: activity ? activity.id : t.getTime(),
+              description: this.data.description.trim(),
+              category: this.data.category.id,
+              alarm_id: activity ? activity.alarm_id : 0,
+              start: activity ? activity.start : t.getTime(),
+              finish: activity ? activity.finish : 0,
+              duration: activity ? activity.duration : 0,
+            }
+            if (_activity.description.length === 0 ) {
+              $router.showToast('Description is required');
+              return;
+            }
+            const minit = parseInt(this.data.reminder);
+            if (isNaN(minit) || minit === 0) {
+              navigator.mozAlarms.remove(_activity['alarm_id']);
+              _activity['alarm_id'] = 0;
+              this.methods.pushToDb(_activity);
+            } else {
+              _activity['alarm_id'] = 1;
+              console.log(_activity);
+            }
+          },
+          pushToDb: function(obj) {
+            try {
+              localforage.getItem(ACTIVITY_TABLE)
+              .then((db) => {
+                if (db == null) {
+                  db = {};
+                }
+                db[obj.id] = obj;
+                return localforage.setItem(ACTIVITY_TABLE, db);
+              })
+              .then((new_db) => {
+                $router.showToast(`Successfully ${activity ? 'update' : 'add'} ${obj.id}`);
+                state.setState(ACTIVITY_TABLE, new_db);
+                $router.pop();
+              });
+            } catch (e) {
+              console.log(e.toString());
+              $router.showToast('Error');
+            }
+          }
+        },
+        softKeyText: { left: '', center: 'SELECT', right: 'Back' },
+        softKeyListener: {
+          left: function() {},
+          center: function() {
+            const listNav = document.querySelectorAll(this.verticalNavClass);
+            if (this.verticalNavIndex > -1) {
+              if (listNav[this.verticalNavIndex]) {
+                listNav[this.verticalNavIndex].click();
+              }
+            }
+          },
+          right: function() {
+            $router.pop();
+          }
+        },
+        softKeyInputFocusText: { left: '', center: '', right: 'Back' },
+        softKeyInputFocusListener: {
+          left: function() {},
+          center: function() {},
+          right: function() {
+            $router.pop();
+          }
+        },
+        dPadNavListener: {
+          arrowUp: function() {
+            this.data.description = document.getElementById('description').value;
+            this.data.reminder = document.getElementById('reminder') ? document.getElementById('reminder').value : 0;
+            this.navigateListNav(-1);
+          },
+          arrowRight: function() {},
+          arrowDown: function() {
+            this.data.description = document.getElementById('description').value;
+            this.data.reminder = document.getElementById('reminder') ? document.getElementById('reminder').value : 0;
+            this.navigateListNav(1);
+          },
+          arrowLeft: function() {},
+        }
+      })
+    );
+  }
+
   const Home = new Kai({
     name: 'home',
     data: {
@@ -321,13 +446,46 @@ window.addEventListener("load", function() {
         window.localStorage.setItem('APP_VERSION', APP_VERSION);
         return;
       }
+      this.$state.addStateListener(ACTIVITY_TABLE, this.methods.listenState);
+      this.methods.listenState(this.$state.getState(ACTIVITY_TABLE));
     },
-    unmounted: function() {},
+    unmounted: function() {
+      this.$state.removeStateListener(ACTIVITY_TABLE, this.methods.listenState);
+    },
     methods: {
-      load: function(page) {},
-      getLeague: function(league) {},
+      listenState: function(data) {
+        console.log(data);
+        localforage.getItem(CATEGORY_TABLE)
+        .then((categories) => {
+          if (categories == null) {
+            categories = {};
+          }
+          categories['General'] = DEFAULT_CATEGORY;
+          const temp = [];
+          if (data) {
+            for (var x in data) {
+              const y = data[x];
+              if (y['finish'] > 0)
+                continue;
+              if (categories[y['category']] != null) {
+                y['category'] = categories[y['category']];
+                y['category']['text'] = y['category']['name'];
+              } else {
+                y['category'] = categories['General'];
+              }
+              temp.push(y);
+            }
+            this.setData({ active_tasks: temp });
+            this.methods.renderSoftKeyCenter();
+          }
+        });
+      },
+      renderSoftKeyCenter: function () {
+        if (this.data.active_tasks.length > 0)
+          this.$router.setSoftKeyCenterText('ACTION');
+      }
     },
-    softKeyText: { left: 'Menu', center: 'SELECT', right: 'Add' },
+    softKeyText: { left: 'Menu', center: '', right: 'Add' },
     softKeyListener: {
       left: function() {
         var menu = [
@@ -348,32 +506,64 @@ window.addEventListener("load", function() {
         }, () => {});
       },
       center: function() {
-        if (this.verticalNavIndex > -1 && this.data.matches.length > 0) {
-          if (this.data.matches[this.verticalNavIndex]) {
-            this.data.matches[this.verticalNavIndex]
+        if (this.verticalNavIndex > -1 && this.data.active_tasks.length > 0) {
+          const xtvt = this.data.active_tasks[this.verticalNavIndex];
+          if (xtvt) {
+            var menu = [
+              {'text': 'Edit'},
+              {'text': 'STOP'},
+            ]
+            this.$router.showOptionMenu('ACTION', menu, 'SELECT', (selected) => {
+              if (selected.text === 'Edit') {
+                activitytEditor(this.$router, xtvt);
+              } else if (selected.text === 'STOP') {
+                try {
+                  localforage.getItem(ACTIVITY_TABLE)
+                  .then((db) => {
+                    if (db == null) {
+                      db = {};
+                    }
+                    navigator.mozAlarms.remove(xtvt['alarm_id']);
+                    xtvt['category'] = xtvt['category']['id'];
+                    xtvt['alarm_id'] = 0;
+                    xtvt['finish'] = new Date().getTime();
+                    xtvt['duration'] = xtvt['finish'] - xtvt['start'];
+                    db[xtvt.id] = xtvt;
+                    return localforage.setItem(ACTIVITY_TABLE, db);
+                  })
+                  .then((new_db) => {
+                    this.verticalNavIndex--;
+                    this.$router.showToast(`Successfully`);
+                    this.$state.setState(ACTIVITY_TABLE, new_db);
+                  });
+                } catch (e) {
+                  console.log(e.toString());
+                  this.$router.showToast('Error');
+                }
+              }
+            }, () => {
+              setTimeout(() => {
+                this.methods.renderSoftKeyCenter();
+              }, 100);
+            });
           }
         }
       },
       right: function() {
-        if (this.verticalNavIndex > -1 && this.data.matches.length > 0) {
-          if (this.data.matches[this.verticalNavIndex]) {
-            
-          }
-        }
+        activitytEditor(this.$router, null);
       }
     },
     dPadNavListener: {
       arrowUp: function() {
         if (this.verticalNavIndex <= 0)
-          return
+          return;
         this.navigateListNav(-1);
       },
       arrowDown: function() {
-        const listNav = document.querySelectorAll(this.verticalNavClass);
-        if (this.verticalNavIndex === listNav.length - 1)
+        if (this.verticalNavIndex === this.data.active_tasks.length - 1)
           return
         this.navigateListNav(1);
-      },
+      }
     }
   });
 

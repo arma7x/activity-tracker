@@ -1,0 +1,37 @@
+<div class="kui-flex-wrap">
+  <style>
+    .txtarea {
+      width: 100%;
+      border-radius: 2px;
+      padding: 10px;
+      -moz-box-sizing: border-box;
+      box-sizing: border-box;
+      border: 1px solid #aaaaaa;
+    }
+  </style>
+  <ul class="kui-list kai-container">
+    <li class="kui-divider" style="height:116px;">
+      <label id="description-sr" class="sr-only">Activity Description</label>
+      <textarea aria-labelledby="description-sr" id="description" name="description" placeholder="Please enter activity description" class="editorXtvtNav txtarea" style="height:100px;" type="text">{{ description }}</textarea>
+    </li>
+    <li class="editorXtvtNav kui-divider" @click="selectCategory()">
+      <div class="kui-row-center">
+        <span>Category</span>
+        <span style="color:#000;padding:5px;background-color:#fff;border-radius:2px;">{{ category.text }}</span>
+      </div>
+    </li>
+    {{#mutable}}
+    <li class="kui-divider">
+      <div class="kui-row-center">
+        <span>Reminder(minute)</span>
+        <input id="reminder" class="editorXtvtNav kui-input" type="tel" style="margin:2%;width:40%;" placeholder="Reminder" value="{{ reminder }}"/>
+      </div>
+    </li>
+    {{/mutable}}
+    <li class="editorXtvtNav kui-divider" @click="submit()">
+      <div class="kui-row-center" style="justify-content:space-around;">
+        <h4>{{#isEdit}}SAVE{{/isEdit}}{{^isEdit}}START{{/isEdit}}</h4>
+      </div>
+    </li>
+  </ul>
+</div>
