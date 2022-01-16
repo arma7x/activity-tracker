@@ -1,0 +1,15 @@
+<div class="kui-flex-wrap">
+  <ul class="kui-list kai-container">
+    <li class="kui-divider">
+      <input id="name" class="editorCatNav kui-input" type="text" placeholder="Enter category name" value="{{ name }}"/>
+    </li>
+    <li class="kui-divider">
+      <input id="color" class="editorCatNav kui-input" style="color:{{ color }};" type="text" placeholder="Enter category color" value="{{ color }}"/>
+    </li>
+    <li class="editorCatNav kui-divider" @click="submit()">
+      <div class="kui-row-center" style="justify-content:space-around;">
+        <h4>SAVE</h4>
+      </div>
+    </li>
+  </ul>
+</div>

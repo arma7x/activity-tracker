@@ -1,0 +1,27 @@
+<div class="kui-flex-wrap">
+  <style>
+    pre {
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      margin: 0px 0 0 5px;
+      padding: 0px;
+      width: 200px;
+      font-size: 16px;
+      font-weight: bold;
+    }
+    .wrapper {
+      width:100%;
+      height:60px;
+      display:flex;
+      flex-direction:row;
+    }
+  </style>
+  <ul class="kui-list kai-container" style="font-size:14px;width:240px;">
+    {{#categories}}
+    <li class="catNav kui-divider">
+      <span style="width:15px;height:15px;border-radius:50%;background-color:{{ color }};"></span>
+      <pre style="">{{ name }}</pre>
+    </li>
+    {{/categories}}
+  </ul>
+</div>
