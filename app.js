@@ -538,7 +538,11 @@ window.addEventListener("load", function() {
           } else if (selected.text === 'Exit') {
             window.close();
           }
-        }, () => {});
+        }, () => {
+          setTimeout(() => {
+            this.methods.renderSoftKeyCenter();
+          }, 100);
+        });
       },
       center: function() {
         if (this.verticalNavIndex > -1 && this.data.active_tasks.length > 0) {
