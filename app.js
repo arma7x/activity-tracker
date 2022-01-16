@@ -3,20 +3,20 @@ const ACTIVITY_TABLE = 'ACTIVITY_LOGS';
 const CATEGORY_TABLE = 'CATEGORIES';
 const DEFAULT_CATEGORY = {'id': 'General', 'name': 'General', 'text': 'General', color: '#320374'};
 
+// {id, minute}
 const setAlarm = function(data = {}) {
-  var alarmId;
-  var date = new Date();
-  date.setMinutes(date.getMinutes() + 1);
-  console.log(date.toString());
-  var addRequest = navigator.mozAlarms.add(date, 'honorTimezone', data);
-  addRequest.onsuccess = (res) => {
-    alarmId = res.target.result;
-    // data['activity_id']
-    // localforage.get(ACTIVITY_TABLE) -> data['activity_id'] -> alarm_id;
-  };
-  addRequest.onerrors = (err) => {
-    console.log(err);
-  };
+  return new Promise((resolve, reject) => {
+    var date = new Date();
+    date.setMinutes(date.getMinutes() + data.minute);
+    console.log('Alarm set:', date.toString());
+    var addRequest = navigator.mozAlarms.add(date, 'honorTimezone', data);
+    addRequest.onsuccess = (res) => {
+      resolve(res.target.result);
+    };
+    addRequest.onerrors = (err) => {
+      reject(err);
+    };
+  });
 }
 
 const pushLocalNotification = function(title, body) {
@@ -50,18 +50,46 @@ const pushLocalNotification = function(title, body) {
 
 window.addEventListener("load", function() {
 
-  navigator.mozSetMessageHandler('alarm', function(mozAlarm) {
-    console.log('alarm fired:', mozAlarm, localforage);
-    pushLocalNotification('TEST', 'This is testing');
-    setAlarm(mozAlarm.data);
-  });
-
-  localforage.setDriver(localforage.INDEXEDDB);
-
   const state = new KaiState({
     [ACTIVITY_TABLE]: {},
     [CATEGORY_TABLE]: {},
   });
+
+  navigator.mozSetMessageHandler('alarm', (mozAlarm) => {
+    console.log('Alarm fired:', mozAlarm);
+    localforage.getItem(CATEGORY_TABLE)
+    .then((c_db) => {
+      if (c_db == null) {
+        c_db = {};
+      }
+      localforage.getItem(ACTIVITY_TABLE)
+      .then((a_db) => {
+        if (a_db == null) {
+          a_db = {};
+        }
+        const activity = a_db[mozAlarm.data.id];
+        if (activity) {
+          var category = c_db[activity['category']];
+          if (category == null)
+            category = DEFAULT_CATEGORY;
+          pushLocalNotification(category.name, activity.description);
+          setAlarm(mozAlarm.data)
+          .then((alarm_id) => {
+            a_db[mozAlarm.data.id]['alarm_id'] = alarm_id;
+            return localforage.setItem(ACTIVITY_TABLE, a_db);
+          })
+          .then((new_db) => {
+            state.setState(ACTIVITY_TABLE, new_db);
+          })
+          .catch((err) => {
+            console.log(err.toString());
+          })
+        }
+      });
+    });
+  });
+
+  localforage.setDriver(localforage.INDEXEDDB);
 
   localforage.getItem(ACTIVITY_TABLE)
   .then((db) => {
@@ -355,14 +383,21 @@ window.addEventListener("load", function() {
               $router.showToast('Description is required');
               return;
             }
-            const minit = parseInt(this.data.reminder);
-            if (isNaN(minit) || minit === 0) {
+            const minute = parseInt(this.data.reminder);
+            if (isNaN(minute) || minute === 0) {
               navigator.mozAlarms.remove(_activity['alarm_id']);
               _activity['alarm_id'] = 0;
               this.methods.pushToDb(_activity);
             } else {
-              _activity['alarm_id'] = 1;
-              console.log(_activity);
+              setAlarm({ id: _activity.id, minute: minute})
+              .then((alarm_id) => {
+                _activity['alarm_id'] = alarm_id;
+                this.methods.pushToDb(_activity);
+              })
+              .catch((err) => {
+                console.log(err.toString());
+                $router.showToast(err.toString());
+              })
             }
           },
           pushToDb: function(obj) {
