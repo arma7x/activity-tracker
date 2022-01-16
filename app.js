@@ -241,10 +241,15 @@ window.addEventListener("load", function() {
             temp.push(data[x]);
           }
           this.setData({ categories: temp });
+          this.methods.renderSoftKeyLR();
         }
       },
+      renderSoftKeyLR: function () {
+        if (this.data.categories.length > 0)
+          this.$router.setSoftKeyLeftText('Edit') || this.$router.setSoftKeyRightText('Remove');
+      }
     },
-    softKeyText: { left: 'Edit', center: 'ADD', right: 'Remove' },
+    softKeyText: { left: '', center: 'ADD', right: '' },
     softKeyListener: {
       left: function() {
         if (this.verticalNavIndex > -1 && this.data.categories.length > 0) {
@@ -257,7 +262,30 @@ window.addEventListener("load", function() {
         categoryEditor(this.$router, null);
       },
       right: function() {
-        //delete
+        if (this.verticalNavIndex > -1 && this.data.categories.length > 0) {
+          if (this.data.categories[this.verticalNavIndex]) {
+            const cat = this.data.categories[this.verticalNavIndex];
+            this.$router.showDialog('Delete Confirmation', `Are you sure to remove category ${cat.name} ? All activities related to this category will be changed to General after this action was executed`, null, 'Yes', () => {
+              localforage.getItem(CATEGORY_TABLE)
+              .then((db) => {
+                if (db == null) {
+                  db = {};
+                }
+                delete db[cat.id];
+                return localforage.setItem(CATEGORY_TABLE, db);
+              })
+              .then((new_db) => {
+                this.verticalNavIndex--;
+                this.$state.setState(CATEGORY_TABLE, new_db);
+                this.$router.showToast(`${cat.name} was deleted`);
+              });
+            }, 'No', () => {}, ' ', null, () => {
+              setTimeout(() => {
+                this.methods.renderSoftKeyLR();
+              }, 100);
+            });
+          }
+        }
       }
     },
     dPadNavListener: {
@@ -380,6 +408,7 @@ window.addEventListener("load", function() {
   }
 
   function displayKaiAds() {
+    return;
     var display = true;
     if (window['kaiadstimer'] == null) {
       window['kaiadstimer'] = new Date();
