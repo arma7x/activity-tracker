@@ -265,7 +265,7 @@ window.addEventListener("load", function() {
         if (this.verticalNavIndex > -1 && this.data.categories.length > 0) {
           if (this.data.categories[this.verticalNavIndex]) {
             const cat = this.data.categories[this.verticalNavIndex];
-            this.$router.showDialog('Delete Confirmation', `Are you sure to remove category ${cat.name} ? All activities related to this category will be changed to General after this action was executed`, null, 'Yes', () => {
+            this.$router.showDialog('Delete Confirmation', `<span>Are you sure to remove category <b>${cat.name}</b> ? All activities related to this category will be changed to <b>General</b> after this action was executed</span>`, null, 'Yes', () => {
               localforage.getItem(CATEGORY_TABLE)
               .then((db) => {
                 if (db == null) {
