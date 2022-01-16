@@ -500,8 +500,8 @@ window.addEventListener("load", function() {
           if (data) {
             for (var x in data) {
               const y = data[x];
-              if (y['finish'] > 0)
-                continue;
+              //if (y['finish'] > 0)
+              //  continue;
               if (categories[y['category']] != null) {
                 y['category'] = categories[y['category']];
                 y['category']['text'] = y['category']['name'];
@@ -516,7 +516,7 @@ window.addEventListener("load", function() {
         });
       },
       renderSoftKeyCenter: function () {
-        if (this.data.active_tasks.length > 0)
+        if (this.data.active_tasks.length > 0 && this.$router.stack[this.$router.stack.length - 1].name === 'home')
           this.$router.setSoftKeyCenterText('ACTION');
       }
     },
@@ -546,35 +546,72 @@ window.addEventListener("load", function() {
           if (xtvt) {
             var menu = [
               {'text': 'Edit'},
-              {'text': 'STOP'},
+              {'text': 'Delete'},
+              {'text': 'QUIT'},
             ]
             this.$router.showOptionMenu('ACTION', menu, 'SELECT', (selected) => {
               if (selected.text === 'Edit') {
                 activitytEditor(this.$router, xtvt);
-              } else if (selected.text === 'STOP') {
-                try {
-                  localforage.getItem(ACTIVITY_TABLE)
-                  .then((db) => {
-                    if (db == null) {
-                      db = {};
+              } else if (selected.text === 'QUIT') {
+                setTimeout(() => {
+                  this.$router.showDialog('QUIT Confirmation', `<span>Are you sure to <b>QUIT</b> this activity ?</span>`, null, 'Yes', () => {
+                    try {
+                      localforage.getItem(ACTIVITY_TABLE)
+                      .then((db) => {
+                        if (db == null) {
+                          db = {};
+                        }
+                        xtvt['category'] = xtvt['category']['id'];
+                        xtvt['alarm_id'] = 0;
+                        xtvt['finish'] = new Date().getTime();
+                        xtvt['duration'] = xtvt['finish'] - xtvt['start'];
+                        db[xtvt.id] = xtvt;
+                        return localforage.setItem(ACTIVITY_TABLE, db);
+                      })
+                      .then((new_db) => {
+                        navigator.mozAlarms.remove(xtvt['alarm_id']);
+                        this.verticalNavIndex--;
+                        this.$router.showToast(`Successfully quit activity`);
+                        this.$state.setState(ACTIVITY_TABLE, new_db);
+                      });
+                    } catch (e) {
+                      console.log(e.toString());
+                      this.$router.showToast('Error');
                     }
-                    navigator.mozAlarms.remove(xtvt['alarm_id']);
-                    xtvt['category'] = xtvt['category']['id'];
-                    xtvt['alarm_id'] = 0;
-                    xtvt['finish'] = new Date().getTime();
-                    xtvt['duration'] = xtvt['finish'] - xtvt['start'];
-                    db[xtvt.id] = xtvt;
-                    return localforage.setItem(ACTIVITY_TABLE, db);
-                  })
-                  .then((new_db) => {
-                    this.verticalNavIndex--;
-                    this.$router.showToast(`Successfully`);
-                    this.$state.setState(ACTIVITY_TABLE, new_db);
+                  }, 'No', () => {}, ' ', null, () => {
+                    setTimeout(() => {
+                      this.methods.renderSoftKeyCenter();
+                    }, 100);
                   });
-                } catch (e) {
-                  console.log(e.toString());
-                  this.$router.showToast('Error');
-                }
+                }, 120);
+              } else if (selected.text === 'Delete') {
+                setTimeout(() => {
+                  this.$router.showDialog('Delete Confirmation', `<span>Are you sure to <b>delete</b> this activity ?</span>`, null, 'Yes', () => {
+                    try {
+                      localforage.getItem(ACTIVITY_TABLE)
+                      .then((db) => {
+                        if (db == null) {
+                          db = {};
+                        }
+                        delete db[xtvt.id];
+                        return localforage.setItem(ACTIVITY_TABLE, db);
+                      })
+                      .then((new_db) => {
+                        navigator.mozAlarms.remove(xtvt['alarm_id']);
+                        this.verticalNavIndex--;
+                        this.$router.showToast(`Successfully delete activity`);
+                        this.$state.setState(ACTIVITY_TABLE, new_db);
+                      });
+                    } catch (e) {
+                      console.log(e.toString());
+                      this.$router.showToast('Error');
+                    }
+                  }, 'No', () => {}, ' ', null, () => {
+                    setTimeout(() => {
+                      this.methods.renderSoftKeyCenter();
+                    }, 100);
+                  });
+                }, 120);
               }
             }, () => {
               setTimeout(() => {
