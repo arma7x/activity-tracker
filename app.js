@@ -57,58 +57,6 @@ window.addEventListener("load", function() {
     [CATEGORY_TABLE]: {},
   });
 
-  navigator.mozSetMessageHandler('alarm', (mozAlarm) => {
-    console.log('Alarm fired:', mozAlarm);
-    localforage.getItem(CATEGORY_TABLE)
-    .then((c_db) => {
-      if (c_db == null) {
-        c_db = {};
-      }
-      localforage.getItem(ACTIVITY_TABLE)
-      .then((a_db) => {
-        if (a_db == null) {
-          a_db = {};
-        }
-        const activity = a_db[mozAlarm.data.id];
-        if (activity) {
-          var category = c_db[activity['category']];
-          if (category == null)
-            category = DEFAULT_CATEGORY;
-          pushLocalNotification(category.name, activity.description);
-          setAlarm(mozAlarm.data)
-          .then((alarm_id) => {
-            a_db[mozAlarm.data.id]['alarm_id'] = alarm_id;
-            return localforage.setItem(ACTIVITY_TABLE, a_db);
-          })
-          .then((updated_db) => {
-            state.setState(ACTIVITY_TABLE, updated_db);
-          })
-          .catch((err) => {
-            console.log(err.toString());
-          })
-        }
-      });
-    });
-  });
-
-  localforage.setDriver(localforage.INDEXEDDB);
-
-  localforage.getItem(ACTIVITY_TABLE)
-  .then((db) => {
-    if (db == null) {
-      db = {};
-    }
-    state.setState(ACTIVITY_TABLE, db);
-  });
-
-  localforage.getItem(CATEGORY_TABLE)
-  .then((db) => {
-    if (db == null) {
-      db = {};
-    }
-    state.setState(CATEGORY_TABLE, db);
-  });
-
   function insertTaskDB(obj) {
     return new Promise((resolve, reject) => {
       localforage.setItem(TASK_TABLE, obj)
@@ -141,6 +89,68 @@ window.addEventListener("load", function() {
       });
     });
   }
+
+  navigator.mozSetMessageHandler('alarm', (mozAlarm) => {
+    console.log('Alarm fired:', mozAlarm);
+    localforage.getItem(CATEGORY_TABLE)
+    .then((categories) => {
+      if (categories == null) {
+        categories = {};
+      }
+      localforage.getItem(TASK_TABLE)
+      .then((activity) => {
+        if (activity == null) {
+          activity = {};
+        }
+        if (Object.keys(activity).length > 0 && mozAlarm.data.id === activity.id) {
+          var category = categories[activity['category']];
+          if (category == null)
+            category = DEFAULT_CATEGORY;
+          pushLocalNotification(category.name, activity.description);
+          setAlarm(mozAlarm.data)
+          .then((alarm_id) => {
+            activity['alarm_id'] = alarm_id;
+            return insertTaskDB(activity);
+          })
+          .then((updated_activity) => {
+            console.log('Update Activity:', updated_activity);
+          })
+          .catch((err) => {
+            console.log(err.toString());
+          })
+        }
+      });
+    });
+  });
+
+  localforage.setDriver(localforage.INDEXEDDB);
+
+  // init TASK_TABLE
+  localforage.getItem(TASK_TABLE)
+  .then((task) => {
+    if (task == null) {
+      task = {};
+    }
+    state.setState(TASK_TABLE, task);
+  });
+
+  // init ACTIVITY_TABLE
+  localforage.getItem(ACTIVITY_TABLE)
+  .then((db) => {
+    if (db == null) {
+      db = {};
+    }
+    state.setState(ACTIVITY_TABLE, db);
+  });
+
+  // init CATEGORY_TABLE
+  localforage.getItem(CATEGORY_TABLE)
+  .then((db) => {
+    if (db == null) {
+      db = {};
+    }
+    state.setState(CATEGORY_TABLE, db);
+  });
 
   const dummy = new Kai({
     name: '_dummy_',
@@ -366,7 +376,7 @@ window.addEventListener("load", function() {
     }
   });
 
-  const activitytEditor = function($router, activity = null) {
+  const activitytEditor = function($router, activity = null, pushToDb = () => {return Promise.reject(0)}) {
     const mutable = activity ? activity.finish === 0 : true;
     const categories = [DEFAULT_CATEGORY];
     const loops = state.getState(CATEGORY_TABLE);
@@ -437,19 +447,15 @@ window.addEventListener("load", function() {
           },
           pushToDb: function(obj) {
             try {
-              localforage.getItem(ACTIVITY_TABLE)
-              .then((db) => {
-                if (db == null) {
-                  db = {};
-                }
-                db[obj.id] = obj;
-                return localforage.setItem(ACTIVITY_TABLE, db);
-              })
+              pushToDb(obj)
               .then((updated_db) => {
                 $router.showToast(`Successfully ${activity ? 'update' : 'add'} ${obj.id}`);
-                state.setState(ACTIVITY_TABLE, updated_db);
                 $router.pop();
-              });
+              })
+              .catch((err) => {
+                console.log(err.toString());
+                $router.showToast(err.toString());
+              })
             } catch (e) {
               console.log(e.toString());
               $router.showToast('Error');
@@ -502,13 +508,15 @@ window.addEventListener("load", function() {
     data: {
       title: 'home',
       idle: true,
-      active_tasks: [],
+      active_task: {},
+      date: '',
+      reminder: false,
     },
     verticalNavClass: '.homeNav',
     components: [],
     templateUrl: document.location.origin + '/templates/home.html',
     mounted: function() {
-      this.$router.setHeaderTitle('Activity Tracker');
+      this.$router.setHeaderTitle('Activity Logger');
       const CURRENT_VERSION = window.localStorage.getItem('APP_VERSION');
       if (APP_VERSION != CURRENT_VERSION) {
         this.$router.showToast(`Updated to version ${APP_VERSION}`);
@@ -516,46 +524,44 @@ window.addEventListener("load", function() {
         window.localStorage.setItem('APP_VERSION', APP_VERSION);
         return;
       }
-      this.$state.addStateListener(ACTIVITY_TABLE, this.methods.listenState);
-      this.methods.listenState(this.$state.getState(ACTIVITY_TABLE));
+      this.$state.addStateListener(TASK_TABLE, this.methods.listenState);
+      this.methods.listenState(this.$state.getState(TASK_TABLE));
     },
     unmounted: function() {
-      this.$state.removeStateListener(ACTIVITY_TABLE, this.methods.listenState);
+      this.$state.removeStateListener(TASK_TABLE, this.methods.listenState);
     },
     methods: {
-      listenState: function(data) {
-        console.log(data);
+      listenState: function(data = {}) {
         localforage.getItem(CATEGORY_TABLE)
         .then((categories) => {
-          if (categories == null) {
-            categories = {};
-          }
-          categories['General'] = DEFAULT_CATEGORY;
-          const temp = [];
-          if (data) {
-            for (var x in data) {
-              const y = data[x];
-              if (y['finish'] > 0)
-                continue;
-              if (categories[y['category']] != null) {
-                y['category'] = categories[y['category']];
-                y['category']['text'] = y['category']['name'];
-              } else {
-                y['category'] = categories['General'];
-              }
-              temp.push(y);
+          if (Object.keys(data).length > 0) {
+            if (categories == null) {
+              categories = {};
             }
-            this.setData({ active_tasks: temp });
-            this.methods.renderSoftKeyCenter();
+            categories['General'] = DEFAULT_CATEGORY;
+            data['category'] = categories[data['category']];
+            data['category']['text'] = data['category']['name'];
+            const date = new Date(data['start']);
+            this.setData({
+              active_task: data,
+              idle: Object.keys(data).length > 0 ? false : true,
+              date: `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`,
+              reminder: data.alarm_id > 0 ? true : false
+            });
+          } else {
+            this.setData({ active_task: {}, idle: true, date: '', reminder: false });
           }
+          this.methods.renderSoftKeyCR();
         });
       },
-      renderSoftKeyCenter: function () {
-        if (this.data.active_tasks.length > 0 && this.$router.stack[this.$router.stack.length - 1].name === 'home')
-          this.$router.setSoftKeyCenterText('ACTION');
+      renderSoftKeyCR: function () {
+        if (!this.data.idle && this.$router.stack[this.$router.stack.length - 1].name === 'home')
+          this.$router.setSoftKeyCenterText('ACTION') || this.$router.setSoftKeyRightText('FINISH');
+        else if (this.data.idle && this.$router.stack[this.$router.stack.length - 1].name === 'home')
+          this.$router.setSoftKeyCenterText('') || this.$router.setSoftKeyRightText('START');
       }
     },
-    softKeyText: { left: 'Menu', center: '', right: 'Add' },
+    softKeyText: { left: 'Menu', center: '', right: '' },
     softKeyListener: {
       left: function() {
         var menu = [
@@ -575,111 +581,65 @@ window.addEventListener("load", function() {
           }
         }, () => {
           setTimeout(() => {
-            this.methods.renderSoftKeyCenter();
+            this.methods.renderSoftKeyCR();
           }, 100);
         });
       },
       center: function() {
-        if (this.verticalNavIndex > -1 && this.data.active_tasks.length > 0) {
-          const xtvt = this.data.active_tasks[this.verticalNavIndex];
-          if (xtvt) {
-            var menu = [
-              {'text': 'Edit'},
-              {'text': 'DELETE'},
-              {'text': 'QUIT'},
-            ]
-            this.$router.showOptionMenu('ACTION', menu, 'SELECT', (selected) => {
-              if (selected.text === 'Edit') {
-                activitytEditor(this.$router, xtvt);
-              } else if (selected.text === 'QUIT') {
-                setTimeout(() => {
-                  this.$router.showDialog('QUIT Confirmation', `<span>Are you sure to <b>QUIT</b> this activity ?</span>`, null, 'Yes', () => {
-                    try {
-                      localforage.getItem(ACTIVITY_TABLE)
-                      .then((db) => {
-                        if (db == null) {
-                          db = {};
-                        }
-                        xtvt['category'] = xtvt['category']['id'];
-                        xtvt['alarm_id'] = 0;
-                        xtvt['finish'] = new Date().getTime();
-                        xtvt['duration'] = xtvt['finish'] - xtvt['start'];
-                        db[xtvt.id] = xtvt;
-                        return localforage.setItem(ACTIVITY_TABLE, db);
-                      })
-                      .then((updated_db) => {
-                        navigator.mozAlarms.remove(xtvt['alarm_id']);
-                        this.verticalNavIndex--;
-                        this.$router.showToast(`Successfully quit activity`);
-                        this.$state.setState(ACTIVITY_TABLE, updated_db);
-                      });
-                    } catch (e) {
-                      console.log(e.toString());
-                      this.$router.showToast('Error');
-                    }
-                  }, 'No', () => {}, ' ', null, () => {
-                    setTimeout(() => {
-                      this.methods.renderSoftKeyCenter();
-                    }, 100);
-                  });
-                }, 120);
-              } else if (selected.text === 'DELETE') {
-                setTimeout(() => {
-                  this.$router.showDialog('DELETE Confirmation', `<span>Are you sure to <b>DELETE</b> this activity ?</span>`, null, 'Yes', () => {
-                    try {
-                      localforage.getItem(ACTIVITY_TABLE)
-                      .then((db) => {
-                        if (db == null) {
-                          db = {};
-                        }
-                        delete db[xtvt.id];
-                        return localforage.setItem(ACTIVITY_TABLE, db);
-                      })
-                      .then((updated_db) => {
-                        navigator.mozAlarms.remove(xtvt['alarm_id']);
-                        this.verticalNavIndex--;
-                        this.$router.showToast(`Successfully delete activity`);
-                        this.$state.setState(ACTIVITY_TABLE, updated_db);
-                      });
-                    } catch (e) {
-                      console.log(e.toString());
-                      this.$router.showToast('Error');
-                    }
-                  }, 'No', () => {}, ' ', null, () => {
-                    setTimeout(() => {
-                      this.methods.renderSoftKeyCenter();
-                    }, 100);
-                  });
-                }, 120);
-              }
-            }, () => {
+        if (!this.data.idle) {
+          var menu = [
+            {'text': 'UPDATE'},
+            {'text': 'CANCEL'},
+          ]
+          this.$router.showOptionMenu('ACTION', menu, 'SELECT', (selected) => {
+            if (selected.text === 'UPDATE') {
+              activitytEditor(this.$router, this.data.active_task, insertTaskDB)
+            } else if (selected.text === 'CANCEL') {
               setTimeout(() => {
-                this.methods.renderSoftKeyCenter();
-              }, 100);
-            });
-          }
+                this.$router.showDialog('CANCEL Confirmation', `<span>Are you sure to <b>CANCEL</b> this activity ?</span>`, null, 'Yes', () => {
+                  insertTaskDB({})
+                  .then((updated_db) => {
+                    this.$router.showToast(`Successfully cancel activity`);
+                  })
+                  .catch((e) => {
+                    console.log(e.toString());
+                    this.$router.showToast('Error');
+                  });
+                }, 'No', () => {}, ' ', null, () => {
+                  setTimeout(() => {
+                    this.methods.renderSoftKeyCR();
+                  }, 100);
+                });
+              }, 120);
+            }
+          }, () => {
+            setTimeout(() => {
+              this.methods.renderSoftKeyCR();
+            }, 100);
+          });
         }
       },
       right: function() {
-        activitytEditor(this.$router, null);
+        if (this.data.idle) {
+          activitytEditor(this.$router, null, insertTaskDB);
+        } else {
+          this.$router.showDialog('STOP Confirmation', 'Are you sure this activity is complete ?', null, 'Yes', () => {
+          }, 'No', () => {}, ' ', null, () => {
+            setTimeout(() => {
+              this.methods.renderSoftKeyCR();
+            }, 100);
+          });
+        }
       }
     },
     dPadNavListener: {
-      arrowUp: function() {
-        if (this.verticalNavIndex <= 0)
-          return;
-        this.navigateListNav(-1);
-      },
-      arrowDown: function() {
-        if (this.verticalNavIndex === this.data.active_tasks.length - 1)
-          return
-        this.navigateListNav(1);
-      }
+      arrowUp: function() {},
+      arrowDown: function() {}
     }
   });
 
   const router = new KaiRouter({
-    title: 'Activity Tracker',
+    title: 'Activity Logger',
     routes: {
       'index' : {
         name: 'Home',
@@ -730,7 +690,7 @@ window.addEventListener("load", function() {
       return;
     getKaiAd({
       publisher: 'ac3140f7-08d6-46d9-aa6f-d861720fba66',
-      app: 'activity-tracker',
+      app: 'activity-logger',
       slot: 'kaios',
       onerror: err => console.error(err),
       onready: ad => {

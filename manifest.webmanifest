@@ -1,8 +1,8 @@
 {
   "lang": "en-US",
-  "id": "Activity Tracker",
-  "name": "Activity Tracker",
-  "description": "Activity Tracker",
+  "id": "Activity Logger",
+  "name": "Activity Logger",
+  "description": "Activity Logger",
   "theme": "#873eff",
   "theme_color": "#873eff",
   "background_color": "#873eff",
@@ -31,7 +31,7 @@
       "name": "arma7x",
       "url": "https://www.kaiostech.com"
     },
-    "origin": "activity-tracker",
+    "origin": "activity-logger",
     "permissions": {
       "alarms": {
         "description": "Wake-up app"
@@ -53,9 +53,9 @@
     ],
     "locales": {
       "en-US": {
-        "name": "Activity Tracker",
-        "subtitle": "Activity Tracker",
-        "description": "Activity Tracker"
+        "name": "Activity Logger",
+        "subtitle": "Activity Logger",
+        "description": "Activity Logger"
       }
     }
   }

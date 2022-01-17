@@ -6,22 +6,50 @@
       margin:0px;
       padding:0px;
       width: 220px;
+      font-size: 14px;
     }
-    .wrapper {
-      width:100%;
-      height:60px;
-      display:flex;
-      flex-direction:row;
+    @media only screen and (orientation : portrait) {
+      .img-holder-hp {
+        margin-left: -30px;
+        height: 150px;
+        width: 150px;
+      }
+    }
+    @media screen and (orientation: landscape) {
+      .img-holder-hp {
+        margin-left: -30px;
+        height: 70px;
+        width: 70px;
+      }
     }
   </style>
-  <ul class="kui-list kai-container" style="font-size:14px;width:240px;">
-    {{#active_tasks}}
-    <li class="homeNav kui-divider">
-      <span>
-        <pre style="font-size:12px;">{{ description }}</pre>
-        <pre style="font-size:12px;">{{ category.name }} {{ alarm_id }}</pre>
-      </span>
-    </li>
-    {{/active_tasks}}
-  </ul>
+  {{#idle}}
+  <div style="text-align:center;white-space:pre-wrap!important;word-break:break-word!important;font-weight:bold;">
+    <img class="img-holder-hp" src="/icons/idle.png"/>
+    <div>Click <b>Start</b> to record your activity</div>
+  </div>
+  {{/idle}}
+  {{^idle}}
+  <div class="kai-container kai-padding-5">
+    <pre style="font-size:12px;">ID:</pre>
+    <h5>{{ active_task.id }}</h5>
+    <pre style="margin-top:5px;font-size:12px;">Activity:</pre>
+    <div style="display:flex;flex-direction:row;">
+      <div style="margin:0 2px 0 0;width:15px;height:15px;border-radius:50%;background-color:{{ active_task.category.color }};"></div>
+      <h5>{{ active_task.category.name }}</h5>
+    </div>
+    <pre style="margin-top:5px;font-size:12px;">Description:</pre>
+    <h5>{{ active_task.description }}</h5>
+    <div style="margin-top:5px;display:flex;flex-direction:column;">
+      <div style="display:flex;flex-direction:row;justify-content:space-between;">
+        <pre style="font-size:12px;">Reminder:</pre>
+        <pre style="font-size:12px;text-align:right;">Start:</pre>
+      </div>
+      <div style="display:flex;flex-direction:row;justify-content:space-between;">
+        <h5>{{#reminder}}YES{{/reminder}}{{^reminder}}NO{{/reminder}}</h5>
+        <h5>{{ date }}</h5>
+      </div>
+    </div>
+  </div>
+  {{/idle}}
 </div>

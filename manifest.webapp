@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
-  "name": "Activity Tracker",
-  "description": "Activity Tracker",
+  "name": "Activity Logger",
+  "description": "Activity Logger",
   "launch_path": "/index.html",
   "theme": "#873eff",
   "theme_color": "#873eff",
@@ -17,7 +17,7 @@
     "name": "arma7x",
     "url": "https://www.kaiostech.com"
   },
-  "origin": "app://activity-tracker.arma7x.com",
+  "origin": "app://activity-logger.arma7x.com",
   "type": "web",
   "permissions": {
     "alarms": {
@@ -37,9 +37,9 @@
   ],
   "locales": {
     "en-US": {
-      "name": "Activity Tracker",
-      "subtitle": "Activity Tracker",
-      "description": "Activity Tracker"
+      "name": "Activity Logger",
+      "subtitle": "Activity Logger",
+      "description": "Activity Logger"
     }
   },
   "default_locale": "en-US"
