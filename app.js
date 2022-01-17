@@ -1,4 +1,5 @@
 const APP_VERSION = "1.0.0";
+const TASK_TABLE = 'ACTIVE_TASK';
 const ACTIVITY_TABLE = 'ACTIVITY_LOGS';
 const CATEGORY_TABLE = 'CATEGORIES';
 const DEFAULT_CATEGORY = {'id': 'General', 'name': 'General', 'text': 'General', color: '#320374'};
@@ -51,6 +52,7 @@ const pushLocalNotification = function(title, body) {
 window.addEventListener("load", function() {
 
   const state = new KaiState({
+    [TASK_TABLE]: {},
     [ACTIVITY_TABLE]: {},
     [CATEGORY_TABLE]: {},
   });
@@ -78,8 +80,8 @@ window.addEventListener("load", function() {
             a_db[mozAlarm.data.id]['alarm_id'] = alarm_id;
             return localforage.setItem(ACTIVITY_TABLE, a_db);
           })
-          .then((new_db) => {
-            state.setState(ACTIVITY_TABLE, new_db);
+          .then((updated_db) => {
+            state.setState(ACTIVITY_TABLE, updated_db);
           })
           .catch((err) => {
             console.log(err.toString());
@@ -106,6 +108,39 @@ window.addEventListener("load", function() {
     }
     state.setState(CATEGORY_TABLE, db);
   });
+
+  function insertTaskDB(obj) {
+    return new Promise((resolve, reject) => {
+      localforage.setItem(TASK_TABLE, obj)
+      .then((updated_db) => {
+        state.setState(TASK_TABLE, updated_db);
+        resolve(updated_db);
+      })
+      .catch((err) => {
+        reject(err);
+      });
+    });
+  }
+
+  function insertActivityDB(obj) {
+    return new Promise((resolve, reject) => {
+      localforage.getItem(ACTIVITY_TABLE)
+      .then((old_db) => {
+        if (old_db == null) {
+          old_db = {};
+        }
+        old_db[obj.id] = obj;
+        return localforage.setItem(ACTIVITY_TABLE, old_db);
+      })
+      .then((updated_db) => {
+        state.setState(ACTIVITY_TABLE, updated_db);
+        resolve(updated_db);
+      })
+      .catch((err) => {
+        reject(err);
+      });
+    });
+  }
 
   const dummy = new Kai({
     name: '_dummy_',
@@ -191,9 +226,9 @@ window.addEventListener("load", function() {
                   db[_category.id] = _category;
                   return localforage.setItem(CATEGORY_TABLE, db);
                 })
-                .then((new_db) => {
+                .then((updated_db) => {
                   $router.showToast(`Successfully ${category ? 'update' : 'add'} ${_category.name}`);
-                  state.setState(CATEGORY_TABLE, new_db);
+                  state.setState(CATEGORY_TABLE, updated_db);
                   $router.pop();
                 });
               }
@@ -303,9 +338,9 @@ window.addEventListener("load", function() {
                 delete db[cat.id];
                 return localforage.setItem(CATEGORY_TABLE, db);
               })
-              .then((new_db) => {
+              .then((updated_db) => {
                 this.verticalNavIndex--;
-                this.$state.setState(CATEGORY_TABLE, new_db);
+                this.$state.setState(CATEGORY_TABLE, updated_db);
                 this.$router.showToast(`${cat.name} was deleted`);
               });
             }, 'No', () => {}, ' ', null, () => {
@@ -410,9 +445,9 @@ window.addEventListener("load", function() {
                 db[obj.id] = obj;
                 return localforage.setItem(ACTIVITY_TABLE, db);
               })
-              .then((new_db) => {
+              .then((updated_db) => {
                 $router.showToast(`Successfully ${activity ? 'update' : 'add'} ${obj.id}`);
-                state.setState(ACTIVITY_TABLE, new_db);
+                state.setState(ACTIVITY_TABLE, updated_db);
                 $router.pop();
               });
             } catch (e) {
@@ -466,7 +501,7 @@ window.addEventListener("load", function() {
     name: 'home',
     data: {
       title: 'home',
-      empty: true,
+      idle: true,
       active_tasks: [],
     },
     verticalNavClass: '.homeNav',
@@ -572,11 +607,11 @@ window.addEventListener("load", function() {
                         db[xtvt.id] = xtvt;
                         return localforage.setItem(ACTIVITY_TABLE, db);
                       })
-                      .then((new_db) => {
+                      .then((updated_db) => {
                         navigator.mozAlarms.remove(xtvt['alarm_id']);
                         this.verticalNavIndex--;
                         this.$router.showToast(`Successfully quit activity`);
-                        this.$state.setState(ACTIVITY_TABLE, new_db);
+                        this.$state.setState(ACTIVITY_TABLE, updated_db);
                       });
                     } catch (e) {
                       console.log(e.toString());
@@ -600,11 +635,11 @@ window.addEventListener("load", function() {
                         delete db[xtvt.id];
                         return localforage.setItem(ACTIVITY_TABLE, db);
                       })
-                      .then((new_db) => {
+                      .then((updated_db) => {
                         navigator.mozAlarms.remove(xtvt['alarm_id']);
                         this.verticalNavIndex--;
                         this.$router.showToast(`Successfully delete activity`);
-                        this.$state.setState(ACTIVITY_TABLE, new_db);
+                        this.$state.setState(ACTIVITY_TABLE, updated_db);
                       });
                     } catch (e) {
                       console.log(e.toString());
