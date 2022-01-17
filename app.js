@@ -647,6 +647,24 @@ window.addEventListener("load", function() {
           activitytEditor(this.$router, null, insertTaskDB);
         } else {
           this.$router.showDialog('STOP Confirmation', 'Are you sure this activity is complete ?', null, 'Yes', () => {
+            localforage.getItem(TASK_TABLE)
+            .then((cur_activity) => {
+              navigator.mozAlarms.remove(cur_activity['alarm_id']);
+              cur_activity['alarm_id'] = 0;
+              cur_activity['finish'] = new Date().getTime();
+              cur_activity['duration'] = cur_activity['finish'] - cur_activity['start'];
+              return insertActivityDB(cur_activity);
+            })
+            .then(() => {
+              return insertTaskDB({});
+            })
+            .then(() => {
+              this.$router.showToast('Success');
+            })
+            .catch((e) => {
+              console.log(e.toString());
+              this.$router.showToast(e.toString());
+            });
           }, 'No', () => {}, ' ', null, () => {
             setTimeout(() => {
               this.methods.renderSoftKeyCR();
