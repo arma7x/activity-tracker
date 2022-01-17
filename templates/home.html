@@ -24,18 +24,18 @@
     }
   </style>
   {{#idle}}
-  <div style="text-align:center;white-space:pre-wrap!important;word-break:break-word!important;font-weight:bold;">
+  <div style="text-align:center;white-space:pre-wrap!important;word-break:break-word!important;">
     <img class="img-holder-hp" src="/icons/idle.png"/>
-    <div>Click <b>Start</b> to record your activity</div>
+    <pre>Click <b>START</b> to log your activity</pre>
   </div>
   {{/idle}}
   {{^idle}}
   <div class="kai-container kai-padding-5">
-    <pre style="font-size:12px;">ID:</pre>
+    <pre style="font-size:12px;">ID</pre>
     <h5>{{ active_task.id }}</h5>
-    <pre style="margin-top:5px;font-size:12px;">Activity:</pre>
+    <pre style="margin-top:5px;font-size:12px;">Type:</pre>
     <div style="display:flex;flex-direction:row;">
-      <div style="margin:0 2px 0 0;width:15px;height:15px;border-radius:50%;background-color:{{ active_task.category.color }};"></div>
+      <div style="margin:1px 3px 0 0;width:12px;height:12px;border-radius:50%;background-color:{{ active_task.category.color }};"></div>
       <h5>{{ active_task.category.name }}</h5>
     </div>
     <pre style="margin-top:5px;font-size:12px;">Description:</pre>
@@ -46,10 +46,11 @@
         <pre style="font-size:12px;text-align:right;">Start:</pre>
       </div>
       <div style="display:flex;flex-direction:row;justify-content:space-between;">
-        <h5>{{#reminder}}YES{{/reminder}}{{^reminder}}NO{{/reminder}}</h5>
+        <h5>{{#reminder}}{{reminder_str}}{{/reminder}}{{^reminder}}NO{{/reminder}}</h5>
         <h5>{{ date }}</h5>
       </div>
     </div>
+    <pre style="margin-top:5px;font-size:12px;">Started {{elapsed}}</pre>
   </div>
   {{/idle}}
 </div>

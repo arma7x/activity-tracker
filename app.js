@@ -49,6 +49,23 @@ const pushLocalNotification = function(title, body) {
   });
 }
 
+function forHumans(seconds) {
+  var levels = [
+    [Math.floor(seconds / 31536000), 'years'],
+    [Math.floor((seconds % 31536000) / 86400), 'days'],
+    [Math.floor(((seconds % 31536000) % 86400) / 3600), 'hours'],
+    [Math.floor((((seconds % 31536000) % 86400) % 3600) / 60), 'minutes'],
+    [(((seconds % 31536000) % 86400) % 3600) % 60, 'seconds'],
+  ];
+  var returntext = '';
+  for (var i = 0, max = levels.length; i < max; i++) {
+    if ( levels[i][0] === 0 ) continue;
+    returntext += ' ' + levels[i][0] + ' ' + (levels[i][0] === 1 ? levels[i][1].substr(0, levels[i][1].length-1): levels[i][1]);
+  };
+  const txts = returntext.trim().split(' ');
+  return txts[0] + ' ' + txts[1];
+}
+
 window.addEventListener("load", function() {
 
   const state = new KaiState({
@@ -390,7 +407,7 @@ window.addEventListener("load", function() {
         data: {
           description: activity ? activity.description : '',
           category: activity ? activity.category : categories[0],
-          reminder: 0,
+          reminder: activity ? activity.reminder : 0,
           mutable: mutable,
           isEdit: activity !== null,
         },
@@ -419,6 +436,7 @@ window.addEventListener("load", function() {
               id: activity ? activity.id : t.getTime(),
               description: this.data.description.trim(),
               category: this.data.category.id,
+              reminder: parseInt(this.data.reminder.trim()),
               alarm_id: activity ? activity.alarm_id : 0,
               start: activity ? activity.start : t.getTime(),
               finish: activity ? activity.finish : 0,
@@ -429,7 +447,8 @@ window.addEventListener("load", function() {
               return;
             }
             const minute = parseInt(this.data.reminder);
-            if (isNaN(minute) || minute === 0) {
+            if (isNaN(minute) || minute <= 0) {
+              _activity['reminder'] = 0;
               navigator.mozAlarms.remove(_activity['alarm_id']);
               _activity['alarm_id'] = 0;
               this.methods.pushToDb(_activity);
@@ -511,6 +530,8 @@ window.addEventListener("load", function() {
       active_task: {},
       date: '',
       reminder: false,
+      reminder_str: '',
+      elapsed: '',
     },
     verticalNavClass: '.homeNav',
     components: [],
@@ -546,10 +567,12 @@ window.addEventListener("load", function() {
               active_task: data,
               idle: Object.keys(data).length > 0 ? false : true,
               date: `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`,
-              reminder: data.alarm_id > 0 ? true : false
+              reminder: data.alarm_id > 0 ? true : false,
+              reminder_str: data.alarm_id > 0 ? forHumans(data['reminder'] * 60) : '',
+              elapsed: timeago.format(data['start'])
             });
           } else {
-            this.setData({ active_task: {}, idle: true, date: '', reminder: false });
+            this.setData({ active_task: {}, idle: true, date: '', reminder: false, reminder_str: '', elapsed: '' });
           }
           this.methods.renderSoftKeyCR();
         });
