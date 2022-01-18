@@ -522,6 +522,112 @@ window.addEventListener("load", function() {
     );
   }
 
+  const generateReport = function($router, type, start, end, categories = []) {
+    // REPORT
+    // LOGS
+    console.log(type, start, end, categories);
+  }
+
+  const advancedReport = new Kai({
+    name: '_dummy_',
+    data: {
+      title: '_dummy_'
+    },
+    verticalNavClass: '.dummyNav',
+    templateUrl: document.location.origin + '/templates/dummy.html',
+    mounted: function() {},
+    unmounted: function() {},
+    methods: {},
+    softKeyText: { left: 'L2', center: 'C2', right: 'R2' },
+    softKeyListener: {
+      left: function() {},
+      center: function() {},
+      right: function() {}
+    },
+    dPadNavListener: {
+      arrowUp: function() {
+        this.navigateListNav(-1);
+      },
+      arrowDown: function() {
+        this.navigateListNav(1);
+      }
+    }
+  });
+
+  const filterCategory = function($router, type, start, end, cb) {
+    const general = JSON.parse(JSON.stringify(DEFAULT_CATEGORY));
+    general['checked'] = true;
+    const opts = [general];
+    const temp_cats = state.getState(CATEGORY_TABLE);
+    for (var x in temp_cats) {
+      const c = temp_cats[x];
+      c['text'] = c['name'];
+      c['checked'] = true;
+      opts.push(c);
+    }
+    setTimeout(() => {
+      $router.showMultiSelector('Categories', opts, 'Select', null, 'Continue', (options) => {
+        setTimeout(() => {
+          const categories = []
+          options.forEach((opt) => {
+            if (opt.checked) {
+              categories.push(opt);
+            }
+          });
+          if (categories.length > 0) {
+            generateReport($router, type, start, end, categories);
+          } else {
+            $router.showToast('Please select a least one category');
+          }
+        }, 110);
+      }, 'Cancel', null, () => {
+        setTimeout(() => {
+          cb();
+        }, 100);
+      }, 0);
+    }, 110);
+  }
+
+  const filterReportByType = function($router, type, cb) {
+    switch (type) {
+      case 'Today':
+        var firstday = new Date();
+        firstday.setHours(0);firstday.setMinutes(0);firstday.setSeconds(0);firstday.setMilliseconds(0);
+        var lastday = new Date();
+        lastday.setHours(23);lastday.setMinutes(59);lastday.setSeconds(59);lastday.setMilliseconds(999);
+        filterCategory($router, 'Today', firstday, lastday, cb);
+        break;
+      case 'This Week':
+        var currentDate = new Date();
+        var firstday = new Date(currentDate.setDate(currentDate.getDate() - currentDate.getDay()));
+        firstday.setHours(0);firstday.setMinutes(0);firstday.setSeconds(0);firstday.setMilliseconds(0);
+        var lastday = new Date(currentDate.setDate(currentDate.getDate() - currentDate.getDay() + 6));
+        lastday.setHours(23);lastday.setMinutes(59);lastday.setSeconds(59);lastday.setMilliseconds(999);
+        filterCategory($router, 'This Week', firstday, lastday, cb);
+        break;
+      case 'This Month':
+        var date = new Date();
+        var firstday = new Date(date.getFullYear(), date.getMonth(), 1);
+        var lastday = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+        lastday.setHours(23);lastday.setMinutes(59);lastday.setSeconds(59);lastday.setMilliseconds(999);
+        filterCategory($router, 'This Month', firstday, lastday, cb);
+        break;
+      case 'This Year':
+        var date = new Date();
+        var firstday = new Date(date.getFullYear(), 0, 1);
+        var lastday = new Date(date.getFullYear(), 11, 31);
+        lastday.setHours(23);lastday.setMinutes(59);lastday.setSeconds(59);lastday.setMilliseconds(999);
+        filterCategory($router, 'This Year', firstday, lastday, cb);
+        break;
+      case 'Full Report':
+        filterCategory($router, 'Full Report', 0, 0, cb);
+        break;
+      case 'Advanced':
+        $router.push('advancedReport');
+        break;
+    }
+  }
+
   const Home = new Kai({
     name: 'home',
     data: {
@@ -590,7 +696,7 @@ window.addEventListener("load", function() {
         var menu = [
           {'text': 'Activity History'},
           {'text': 'Manage Category'},
-          {'text': 'Reports & Statistics'},
+          {'text': 'Logs & Reports'},
           {'text': 'Changelogs'},
           {'text': 'Exit'},
         ]
@@ -599,6 +705,24 @@ window.addEventListener("load", function() {
             this.$router.push('changelogs');
           } else if (selected.text === 'Manage Category') {
             this.$router.push('category');
+          } else if (selected.text === 'Logs & Reports') {
+            setTimeout(() => {
+              var menu = [
+                {'text': 'Today'},
+                {'text': 'This Week'},
+                {'text': 'This Month'},
+                {'text': 'This Year'},
+                {'text': 'Full Report'},
+                {'text': 'Advanced'},
+              ]
+              this.$router.showOptionMenu('Logs & Reports by', menu, 'SELECT', (selected) => {
+                filterReportByType(this.$router, selected.text, this.methods.renderSoftKeyCR);
+              }, () => {
+                setTimeout(() => {
+                  this.methods.renderSoftKeyCR();
+                }, 100);
+              });
+            }, 110);
           } else if (selected.text === 'Exit') {
             window.close();
           }
@@ -689,6 +813,10 @@ window.addEventListener("load", function() {
       'category' : {
         name: 'category',
         component: category
+      },
+      'advancedReport': {
+        name: 'advancedReport',
+        component: advancedReport
       },
       'changelogs' : {
         name: 'changelogs',
