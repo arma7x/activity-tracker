@@ -779,11 +779,11 @@ window.addEventListener("load", function() {
             setTimeout(() => {
               var menu = [
                 {'text': 'All Timeframe'},
-                {'text': 'Advanced Reports'},
                 {'text': 'Today'},
                 {'text': 'This Week'},
                 {'text': 'This Month'},
                 {'text': 'This Year'},
+                {'text': 'Advanced Reports'},
               ]
               this.$router.showOptionMenu('Logs & Reports by', menu, 'SELECT', (selected) => {
                 filterReportByType(this.$router, selected.text, this.methods.renderSoftKeyCR);
