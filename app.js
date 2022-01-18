@@ -393,6 +393,8 @@ window.addEventListener("load", function() {
     }
   });
 
+  const activityViewer = function($router, activity) {}
+
   const activitytEditor = function($router, activity = null, pushToDb = () => {return Promise.reject(0)}) {
     const mutable = activity ? activity.finish === 0 : true;
     const categories = [DEFAULT_CATEGORY];
@@ -523,37 +525,28 @@ window.addEventListener("load", function() {
   }
 
   const generateReport = function($router, type, start, end, categories = []) {
-    // REPORT
-    // LOGS
-    console.log(type, start, end, categories);
-  }
-
-  const advancedReport = new Kai({
-    name: '_dummy_',
-    data: {
-      title: '_dummy_'
-    },
-    verticalNavClass: '.dummyNav',
-    templateUrl: document.location.origin + '/templates/dummy.html',
-    mounted: function() {},
-    unmounted: function() {},
-    methods: {},
-    softKeyText: { left: 'L2', center: 'C2', right: 'R2' },
-    softKeyListener: {
-      left: function() {},
-      center: function() {},
-      right: function() {}
-    },
-    dPadNavListener: {
-      arrowUp: function() {
-        this.navigateListNav(-1);
-      },
-      arrowDown: function() {
-        this.navigateListNav(1);
+    // console.log(type, start, end, categories_obj);
+    const list = []; // LOGS
+    const total_duration = {}; // REPORT
+    const categories_obj = {};
+    categories.forEach((c) => {
+      categories_obj[c['id']] = c;
+    });
+    const activities = state.getState(ACTIVITY_TABLE);
+    for (var x in activities) {
+      if (categories_obj[activities[x]['category']] != null)
+        activities[x]['category'] = categories_obj[activities[x]['category']];
+      else
+        activities[x]['category']['checked'] = categories_obj[activities[x]['General']];
+      if (activities[x]['category']['checked'] && ((start === 0 || end === 0) || (start <= activities[x]['start'] && activities[x]['finish'] <= end))) {
+        list.push(activities);
+        if (total_duration[activities[x]['category']['name']] == null)
+          total_duration[activities[x]['category']['name']] = 0;
+        total_duration[activities[x]['category']['name']] += activities[x]['duration'];
       }
     }
-  });
-
+    console.log(list, total_duration);
+  }
   const filterCategory = function($router, type, start, end, cb) {
     const general = JSON.parse(JSON.stringify(DEFAULT_CATEGORY));
     general['checked'] = true;
@@ -575,7 +568,7 @@ window.addEventListener("load", function() {
             }
           });
           if (categories.length > 0) {
-            generateReport($router, type, start, end, categories);
+            generateReport($router, type, start, end, options);
           } else {
             $router.showToast('Please select a least one category');
           }
@@ -588,6 +581,84 @@ window.addEventListener("load", function() {
     }, 110);
   }
 
+  const advancedReport = new Kai({
+    name: 'advancedReport',
+    data: {
+      title: 'advancedReport',
+      start: '',
+      start_ms: 0,
+      end: '',
+      end_ms: 0,
+      categories: [],
+    },
+    verticalNavClass: '.advncdRprtNav',
+    templateUrl: document.location.origin + '/templates/advancedReport.html',
+    mounted: function() {
+      this.$router.setHeaderTitle('Advanced Reports');
+      var start = new Date();
+      start.setHours(0);start.setMinutes(0);start.setSeconds(0);start.setMilliseconds(0);
+      var end = new Date();
+      end.setHours(23);end.setMinutes(59);end.setSeconds(59);end.setMilliseconds(999);
+      this.setData({
+        start: start.toLocaleDateString(),
+        start_ms: start.getTime(),
+        end: end.toLocaleDateString(),
+        end_ms: end.getTime(),
+      });
+    },
+    unmounted: function() {},
+    methods: {
+      setStart: function() {
+        const d = new Date(this.data.start_ms);
+        this.$router.showDatePicker(d.getFullYear(), d.getMonth() + 1, d.getDate(), (dt) => {
+          this.setData({
+            start: dt.toLocaleDateString(),
+            start_ms: dt.getTime(),
+          });
+        }, undefined);
+      },
+      setEnd: function() {
+        const d = new Date(this.data.end_ms);
+        this.$router.showDatePicker(d.getFullYear(), d.getMonth() + 1, d.getDate(), (dt) => {
+          dt.setHours(23);dt.setMinutes(59);dt.setSeconds(59);dt.setMilliseconds(999);
+          this.setData({
+            end: dt.toLocaleDateString(),
+            end_ms: dt.getTime(),
+          });
+        }, undefined);
+      },
+    },
+    softKeyText: { left: 'Category', center: 'SELECT', right: 'Return' },
+    softKeyListener: {
+      left: function() {
+        if (this.data.start_ms > this.data.end_ms) {
+          this.$router.showToast('Invalid datetime range');
+        } else {
+          filterCategory(this.$router, 'Advanced Reports', this.data.start_ms, this.data.end_ms, ()=>{});
+        }
+      },
+      center: function() {
+        const listNav = document.querySelectorAll(this.verticalNavClass);
+        if (this.verticalNavIndex > -1) {
+          if (listNav[this.verticalNavIndex]) {
+            listNav[this.verticalNavIndex].click();
+          }
+        }
+      },
+      right: function() {
+        this.$router.pop();
+      }
+    },
+    dPadNavListener: {
+      arrowUp: function() {
+        this.navigateListNav(-1);
+      },
+      arrowDown: function() {
+        this.navigateListNav(1);
+      }
+    }
+  });
+
   const filterReportByType = function($router, type, cb) {
     switch (type) {
       case 'Today':
@@ -595,7 +666,7 @@ window.addEventListener("load", function() {
         firstday.setHours(0);firstday.setMinutes(0);firstday.setSeconds(0);firstday.setMilliseconds(0);
         var lastday = new Date();
         lastday.setHours(23);lastday.setMinutes(59);lastday.setSeconds(59);lastday.setMilliseconds(999);
-        filterCategory($router, 'Today', firstday, lastday, cb);
+        filterCategory($router, type, firstday, lastday, cb);
         break;
       case 'This Week':
         var currentDate = new Date();
@@ -603,26 +674,26 @@ window.addEventListener("load", function() {
         firstday.setHours(0);firstday.setMinutes(0);firstday.setSeconds(0);firstday.setMilliseconds(0);
         var lastday = new Date(currentDate.setDate(currentDate.getDate() - currentDate.getDay() + 6));
         lastday.setHours(23);lastday.setMinutes(59);lastday.setSeconds(59);lastday.setMilliseconds(999);
-        filterCategory($router, 'This Week', firstday, lastday, cb);
+        filterCategory($router, type, firstday, lastday, cb);
         break;
       case 'This Month':
         var date = new Date();
         var firstday = new Date(date.getFullYear(), date.getMonth(), 1);
         var lastday = new Date(date.getFullYear(), date.getMonth() + 1, 0);
         lastday.setHours(23);lastday.setMinutes(59);lastday.setSeconds(59);lastday.setMilliseconds(999);
-        filterCategory($router, 'This Month', firstday, lastday, cb);
+        filterCategory($router, type, firstday, lastday, cb);
         break;
       case 'This Year':
         var date = new Date();
         var firstday = new Date(date.getFullYear(), 0, 1);
         var lastday = new Date(date.getFullYear(), 11, 31);
         lastday.setHours(23);lastday.setMinutes(59);lastday.setSeconds(59);lastday.setMilliseconds(999);
-        filterCategory($router, 'This Year', firstday, lastday, cb);
+        filterCategory($router, type, firstday, lastday, cb);
         break;
-      case 'Full Report':
-        filterCategory($router, 'Full Report', 0, 0, cb);
+      case 'All Timeframe':
+        filterCategory($router, type, 0, 0, cb);
         break;
-      case 'Advanced':
+      case 'Advanced Reports':
         $router.push('advancedReport');
         break;
     }
@@ -694,7 +765,6 @@ window.addEventListener("load", function() {
     softKeyListener: {
       left: function() {
         var menu = [
-          {'text': 'Activity History'},
           {'text': 'Manage Category'},
           {'text': 'Logs & Reports'},
           {'text': 'Changelogs'},
@@ -708,12 +778,12 @@ window.addEventListener("load", function() {
           } else if (selected.text === 'Logs & Reports') {
             setTimeout(() => {
               var menu = [
+                {'text': 'All Timeframe'},
+                {'text': 'Advanced Reports'},
                 {'text': 'Today'},
                 {'text': 'This Week'},
                 {'text': 'This Month'},
                 {'text': 'This Year'},
-                {'text': 'Full Report'},
-                {'text': 'Advanced'},
               ]
               this.$router.showOptionMenu('Logs & Reports by', menu, 'SELECT', (selected) => {
                 filterReportByType(this.$router, selected.text, this.methods.renderSoftKeyCR);
