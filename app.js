@@ -10,14 +10,26 @@ const setAlarm = function(data = {}) {
     var date = new Date();
     date.setMinutes(date.getMinutes() + data.minute);
     console.log('Alarm set:', date.toString());
-    var addRequest = navigator.mozAlarms.add(date, 'honorTimezone', data);
-    addRequest.onsuccess = (res) => {
-      resolve(res.target.result);
-    };
-    addRequest.onerrors = (err) => {
-      reject(err);
-    };
+    if (navigator.b2g) {
+      resolve(0);
+    } else {
+      var addRequest = navigator.mozAlarms.add(date, 'honorTimezone', data);
+      addRequest.onsuccess = (res) => {
+        resolve(res.target.result);
+      };
+      addRequest.onerrors = (err) => {
+        reject(err);
+      };
+    }
   });
+}
+
+const removeAlarm = function(id) {
+  if (navigator.b2g) {
+    // navigator.b2g.alarmManager.remove(id);
+  } else {
+    navigator.mozAlarms.remove(id);
+  }
 }
 
 const pushLocalNotification = function(title, body) {
@@ -230,8 +242,8 @@ window.addEventListener("load", function() {
           'answer': '30',
         },
         {
-          'question': 'Why I\'m not receiving reminder event ?',
-          'answer': 'Sometimes, the Alarm API does not work until the screen was turn-on',
+          'question': 'Why I\'m not receiving reminder event(KaiOS 2.5) ?',
+          'answer': 'Sometimes, the Alarm API does not work until the screen was turn-on. Reminder only available on KaiOS 2.5',
         },
         {
           'question': 'List of D-Pad navigation shorcuts for Logs & Reports',
@@ -459,7 +471,7 @@ window.addEventListener("load", function() {
   const activityViewer = function($router, activity) {}
 
   const activitytEditor = function($router, activity = null, pushToDb = () => {return Promise.reject(0)}) {
-    const mutable = activity ? activity.finish === 0 : true;
+    const hidden = navigator.b2g == null ? (activity ? activity.finish === 0 : true) : false;
     const categories = [DEFAULT_CATEGORY];
     const loops = state.getState(CATEGORY_TABLE);
     for (var c in loops) {
@@ -473,7 +485,7 @@ window.addEventListener("load", function() {
           description: activity ? activity.description : '',
           category: activity ? activity.category : categories[0],
           reminder: activity ? activity.reminder : 0,
-          mutable: mutable,
+          hidden: hidden,
           isEdit: activity !== null,
         },
         verticalNavClass: '.editorXtvtNav',
@@ -514,7 +526,7 @@ window.addEventListener("load", function() {
             const minute = parseInt(this.data.reminder);
             if (isNaN(minute) || minute <= 0) {
               _activity['reminder'] = 0;
-              navigator.mozAlarms.remove(_activity['alarm_id']);
+              removeAlarm(_activity['alarm_id']);
               _activity['alarm_id'] = 0;
               this.methods.pushToDb(_activity);
             } else {
@@ -1070,7 +1082,7 @@ window.addEventListener("load", function() {
           this.$router.showDialog('STOP Confirmation', 'Are you sure this activity is complete ?', null, 'Yes', () => {
             localforage.getItem(TASK_TABLE)
             .then((cur_activity) => {
-              navigator.mozAlarms.remove(cur_activity['alarm_id']);
+              removeAlarm(cur_activity['alarm_id']);
               cur_activity['alarm_id'] = 0;
               cur_activity['finish'] = new Date().getTime();
               cur_activity['duration'] = cur_activity['finish'] - cur_activity['start'];

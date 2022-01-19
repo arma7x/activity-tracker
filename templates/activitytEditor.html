@@ -20,14 +20,14 @@
         <span style="color:#000;padding:5px;background-color:#fff;border-radius:2px;">{{ category.text }}</span>
       </div>
     </li>
-    {{#mutable}}
+    {{#hidden}}
     <li class="kui-divider">
       <div class="kui-row-center">
         <span>Reminder(minute)</span>
         <input id="reminder" class="editorXtvtNav kui-input" type="tel" style="margin:2%;width:30%;" placeholder="Reminder" value="{{ reminder }}"/>
       </div>
     </li>
-    {{/mutable}}
+    {{/hidden}}
     <li class="editorXtvtNav kui-divider" @click="submit()">
       <div class="kui-row-center" style="justify-content:space-around;">
         <h4>{{#isEdit}}SAVE{{/isEdit}}{{^isEdit}}START{{/isEdit}}</h4>
