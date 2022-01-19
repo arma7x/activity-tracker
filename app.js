@@ -223,7 +223,7 @@ window.addEventListener("load", function() {
       list: [
         {
           'question': 'Which sorting/aggregations timeframe available for Logs & Reports ?',
-          'answer': `- Today<br>- Weekly<br>- Monthly<br>- Yearly<br>- Entire Logs<br>- Advanced Logs & Reports`,
+          'answer': `- Daily<br>- Weekly<br>- Monthly<br>- Yearly<br>- Entire Logs<br>- Advanced`,
         },
         {
           'question': 'What is the number of logs per page for Logs & Reports ?',
@@ -234,7 +234,7 @@ window.addEventListener("load", function() {
           'answer': 'Sometimes, the Alarm API does not work until the screen was turn-on',
         },
         {
-          'question': 'List of D-Pad navigation button for Logs & Reports',
+          'question': 'List of D-Pad navigation shorcuts for Logs & Reports',
           'answer': `- Arrow Left(previous page)<br>- Arrow Right(next page)<br>- Arrow Up(scroll up)<br>- Arrow Down(scroll down)`,
         },
         {
@@ -937,9 +937,20 @@ window.addEventListener("load", function() {
       }
       this.$state.addStateListener(TASK_TABLE, this.methods.listenState);
       this.methods.listenState(this.$state.getState(TASK_TABLE));
+      window['REALTIME_ELAPSED'] = setInterval(() => {
+        const el = document.getElementById('home_elapsed');
+        if (el != null) {
+          const str = timeago.format(parseInt(el.getAttribute('data-datetime')));
+          el.textContent = `Started ${str}`;
+        }
+      }, 60000);
     },
     unmounted: function() {
       this.$state.removeStateListener(TASK_TABLE, this.methods.listenState);
+      if (window['REALTIME_ELAPSED'] != null) {
+        clearInterval(window['REALTIME_ELAPSED']);
+        window['REALTIME_ELAPSED'] = null;
+      }
     },
     methods: {
       listenState: function(data = {}) {
