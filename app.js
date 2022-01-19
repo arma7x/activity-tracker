@@ -49,7 +49,7 @@ const pushLocalNotification = function(title, body) {
   });
 }
 
-function forHumans(seconds) {
+function forHumans(seconds, full = false) {
   var levels = [
     [Math.floor(seconds / 31536000), 'years'],
     [Math.floor((seconds % 31536000) / 86400), 'days'],
@@ -62,6 +62,8 @@ function forHumans(seconds) {
     if ( levels[i][0] === 0 ) continue;
     returntext += ' ' + levels[i][0] + ' ' + (levels[i][0] === 1 ? levels[i][1].substr(0, levels[i][1].length-1): levels[i][1]);
   };
+  if (full)
+    return returntext.trim();
   const txts = returntext.trim().split(' ');
   return txts[0] + ' ' + txts[1];
 }
@@ -526,8 +528,10 @@ window.addEventListener("load", function() {
 
   const generateReport = function($router, type, start, end, categories = []) {
     // console.log(type, start, end, categories_obj);
-    const list = []; // LOGS
-    const total_duration = {}; // REPORT
+    const pages = [];
+    const reports = [];
+    const list = [];
+    const total_duration = {};
     const categories_obj = {};
     categories.forEach((c) => {
       categories_obj[c['id']] = c;
@@ -537,15 +541,24 @@ window.addEventListener("load", function() {
       if (categories_obj[activities[x]['category']] != null)
         activities[x]['category'] = categories_obj[activities[x]['category']];
       else
-        activities[x]['category']['checked'] = categories_obj[activities[x]['General']];
+        activities[x]['category'] = categories_obj['General'];
       if (activities[x]['category']['checked'] && ((start === 0 || end === 0) || (start <= activities[x]['start'] && activities[x]['finish'] <= end))) {
-        list.push(activities);
+        activities[x]['start'] = new Date(activities[x]['start']).toLocaleString();
+        activities[x]['finish'] = new Date(activities[x]['finish']).toLocaleString();
+        activities[x]['duration_txt'] = forHumans(Math.round(activities[x]['duration'] / 1000), true);
+        list.push(activities[x]);
         if (total_duration[activities[x]['category']['name']] == null)
           total_duration[activities[x]['category']['name']] = 0;
-        total_duration[activities[x]['category']['name']] += activities[x]['duration'];
+        total_duration[activities[x]['category']['name']] += Math.round(activities[x]['duration'] / 1000);
       }
     }
-    console.log(list, total_duration);
+    while (list.length > 0) {
+      pages.push(list.splice(0, 1));
+    }
+    for (var x in total_duration) {
+      reports.push({ text:x, subtext: forHumans(total_duration[x]) });
+    }
+    console.log(pages, reports);
   }
   const filterCategory = function($router, type, start, end, cb) {
     const general = JSON.parse(JSON.stringify(DEFAULT_CATEGORY));
