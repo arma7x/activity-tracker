@@ -121,38 +121,40 @@ window.addEventListener("load", function() {
     });
   }
 
-  navigator.mozSetMessageHandler('alarm', (mozAlarm) => {
-    console.log('Alarm fired:', mozAlarm);
-    localforage.getItem(CATEGORY_TABLE)
-    .then((categories) => {
-      if (categories == null) {
-        categories = {};
-      }
-      localforage.getItem(TASK_TABLE)
-      .then((activity) => {
-        if (activity == null) {
-          activity = {};
+  if (navigator.mozSetMessageHandler) {
+    navigator.mozSetMessageHandler('alarm', (mozAlarm) => {
+      console.log('Alarm fired:', mozAlarm);
+      localforage.getItem(CATEGORY_TABLE)
+      .then((categories) => {
+        if (categories == null) {
+          categories = {};
         }
-        if (Object.keys(activity).length > 0 && mozAlarm.data.id === activity.id) {
-          var category = categories[activity['category']];
-          if (category == null)
-            category = DEFAULT_CATEGORY;
-          pushLocalNotification(category.name, activity.description);
-          setAlarm(mozAlarm.data)
-          .then((alarm_id) => {
-            activity['alarm_id'] = alarm_id;
-            return insertTaskDB(activity);
-          })
-          .then((updated_activity) => {
-            console.log('Update Activity:', updated_activity);
-          })
-          .catch((err) => {
-            console.log(err.toString());
-          })
-        }
+        localforage.getItem(TASK_TABLE)
+        .then((activity) => {
+          if (activity == null) {
+            activity = {};
+          }
+          if (Object.keys(activity).length > 0 && mozAlarm.data.id === activity.id) {
+            var category = categories[activity['category']];
+            if (category == null)
+              category = DEFAULT_CATEGORY;
+            pushLocalNotification(category.name, activity.description);
+            setAlarm(mozAlarm.data)
+            .then((alarm_id) => {
+              activity['alarm_id'] = alarm_id;
+              return insertTaskDB(activity);
+            })
+            .then((updated_activity) => {
+              console.log('Update Activity:', updated_activity);
+            })
+            .catch((err) => {
+              console.log(err.toString());
+            })
+          }
+        });
       });
     });
-  });
+  }
 
   localforage.setDriver(localforage.INDEXEDDB);
 
