@@ -31,11 +31,13 @@
   {{/idle}}
   {{^idle}}
   <div class="kai-container kai-padding-5">
-    <pre style="font-size:12px;">ID</pre>
-    <h5>{{ active_task.id }}</h5>
-    <pre style="margin-top:5px;font-size:12px;">Type:</pre>
+    <div style="display:flex;flex-direction:row;align-content:flex-start;">
+      <small style="font-size:14px;">ID:</small>
+      <h5>&nbsp;#{{ active_task.id }}</h5>
+    </div>
+    <pre style="margin-top:2px;font-size:12px;">Type:</pre>
     <div style="display:flex;flex-direction:row;">
-      <div style="margin:1px 3px 0 0;width:12px;height:12px;border-radius:50%;background-color:{{ active_task.category.color }};"></div>
+      <div style="margin:2px 3px 0 0;width:11px;height:11px;border-radius:50%;background-color:{{ active_task.category.color }};"></div>
       <h5>{{ active_task.category.name }}</h5>
     </div>
     <pre style="margin-top:5px;font-size:12px;">Description:</pre>

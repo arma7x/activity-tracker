@@ -1,5 +1,5 @@
 const APP_VERSION = "1.0.0";
-const TASK_TABLE = 'ACTIVE_TASK';
+const TASK_TABLE = 'TASK';
 const ACTIVITY_TABLE = 'ACTIVITY_LOGS';
 const CATEGORY_TABLE = 'CATEGORIES';
 const DEFAULT_CATEGORY = {'id': 'General', 'name': 'General', 'text': 'General', color: '#320374'};
@@ -216,6 +216,66 @@ window.addEventListener("load", function() {
     }
   });
 
+  const helpSupport = new Kai({
+    name: 'helpSupport',
+    data: {
+      title: 'helpSupport',
+      list: [
+        {
+          'question': 'Which sorting/aggregations timeframe available for Logs & Reports ?',
+          'answer': `- Today<br>- Weekly<br>- Monthly<br>- Yearly<br>- Entire Logs<br>- Advanced Logs & Reports`,
+        },
+        {
+          'question': 'What is the number of logs per page for Logs & Reports ?',
+          'answer': '30',
+        },
+        {
+          'question': 'Why I\'m not receiving reminder event ?',
+          'answer': 'Sometimes, the Alarm API does not work until the screen was turn-on',
+        },
+        {
+          'question': 'List of D-Pad navigation button for Logs & Reports',
+          'answer': `- Arrow Left(previous page)<br>- Arrow Right(next page)<br>- Arrow Up(scroll up)<br>- Arrow Down(scroll down)`,
+        },
+        {
+          'question': 'Feature requests or bug reports',
+          'answer': 'Send an email to ahmadmuhamad101@gmail.com',
+        }
+      ]
+    },
+    verticalNavClass: '.helpSupportNav',
+    templateUrl: document.location.origin + '/templates/helpSupport.html',
+    mounted: function() {
+      this.$router.setHeaderTitle('Help & Support');
+    },
+    unmounted: function() {},
+    methods: {},
+    softKeyText: { left: '', center: 'SELECT', right: '' },
+    softKeyListener: {
+      left: function() {},
+      center: function() {
+        const t = this.data.list[this.verticalNavIndex];
+        if (t != null) {
+          this.$router.showDialog('Answer', t['answer'], null, 'Close', undefined, ' ', undefined, undefined, undefined, () => {});
+        }
+      },
+      right: function() {}
+    },
+    dPadNavListener: {
+      arrowUp: function() {
+        if (this.verticalNavIndex <= 0)
+          return;
+        this.navigateListNav(-1);
+      },
+      arrowDown: function() {
+        const listNav = document.querySelectorAll(this.verticalNavClass);
+        if (this.verticalNavIndex === listNav.length - 1)
+          return
+        this.navigateListNav(1);
+      }
+    }
+  });
+
   const categoryEditor = function($router, category = null) {
     $router.push(
       new Kai({
@@ -388,7 +448,8 @@ window.addEventListener("load", function() {
         this.navigateListNav(-1);
       },
       arrowDown: function() {
-        if (this.verticalNavIndex === this.data.categories.length - 1)
+        const listNav = document.querySelectorAll(this.verticalNavClass);
+        if (this.verticalNavIndex === listNav.length - 1)
           return
         this.navigateListNav(1);
       }
@@ -527,7 +588,6 @@ window.addEventListener("load", function() {
   }
 
   const generateReport = function($router, type, start, end, categories = []) {
-    // console.log(type, start, end, categories_obj);
     const pages = [];
     const reports = [];
     const list = [];
@@ -543,8 +603,10 @@ window.addEventListener("load", function() {
       else
         activities[x]['category'] = categories_obj['General'];
       if (activities[x]['category']['checked'] && ((start === 0 || end === 0) || (start <= activities[x]['start'] && activities[x]['finish'] <= end))) {
-        activities[x]['start'] = new Date(activities[x]['start']).toLocaleString();
-        activities[x]['finish'] = new Date(activities[x]['finish']).toLocaleString();
+        const sd = new Date(activities[x]['start']);
+        const ed = new Date(activities[x]['finish']);
+        activities[x]['start'] = `${sd.toLocaleDateString()} ${sd.toLocaleTimeString()}`;
+        activities[x]['finish'] = `${ed.toLocaleDateString()} ${ed.toLocaleTimeString()}`;
         activities[x]['duration_txt'] = forHumans(Math.round(activities[x]['duration'] / 1000), true);
         list.push(activities[x]);
         if (total_duration[activities[x]['category']['name']] == null)
@@ -553,12 +615,150 @@ window.addEventListener("load", function() {
       }
     }
     while (list.length > 0) {
-      pages.push(list.splice(0, 1));
+      pages.push(list.splice(0, 30));
     }
     for (var x in total_duration) {
-      reports.push({ text:x, subtext: forHumans(total_duration[x]) });
+      reports.push({ text:x, subtext: forHumans(total_duration[x], true), duration: total_duration[x] });
     }
-    console.log(pages, reports);
+    reports.sort((a, b) => (a.duration > b.duration ? -1 : 1))
+    if (pages.length === 0) {
+      $router.showToast('No activities');
+      return;
+    }
+    $router.push(new Kai({
+      name: 'activityLog',
+      data: {
+        title: 'activityLog',
+        logs: [],
+        page: 0,
+      },
+      verticalNavClass: '.xtvtLogNav',
+      templateUrl: document.location.origin + '/templates/activityLog.html',
+      mounted: function() {
+        this.methods.gotoPage(0);
+      },
+      unmounted: function() {},
+      methods: {
+        gotoPage: function(p) {
+          this.verticalNavIndex = -1;
+          this.setData({
+            logs: pages[p],
+            page: p,
+          });
+          this.methods.setHeader();
+        },
+        setHeader: function() {
+          this.$router.setHeaderTitle(`Logs(${this.data.page+1}/${pages.length})`);
+        }
+      },
+      softKeyText: { left: 'Reports', center: 'DETAIL', right: 'Jump' },
+      softKeyListener: {
+        left: function() {
+          this.$router.showOptionMenu('REPORTS', reports, 'CLOSE', (selected) => {}, () => {});
+        },
+        center: function() {
+          const xtvt = this.data.logs[this.verticalNavIndex];
+          if (xtvt != null) {
+            const template = `
+            <div>
+              <div style="display:flex;flex-direction:row;">
+                <div style="margin:1px 3px 0 0;width:11px;height:11px;border-radius:50%;background-color:${xtvt.category.color};"></div>
+                <h4>Type: ${xtvt.category.name}</h4>
+              </div>
+              <pre style="margin-top:5px;font-size:12px;font-weight:bold;">Description:</pre>
+              <pre>${xtvt.description}</pre>
+              <pre style="margin-top:5px;font-size:12px;"><b>Start:</b> ${xtvt.start}</pre>
+              <pre style="margin-top:5px;font-size:12px;"><b>End:</b> ${xtvt.finish}</pre>
+              <pre style="margin-top:5px;font-size:12px;"><b>Duration:</b> ${xtvt.duration_txt}</pre>
+            </div>`;
+            this.$router.showDialog(`#${xtvt.id}`, template, null, 'Close', undefined, ' ', undefined, undefined, undefined, () => {});
+          }
+        },
+        right: function() {
+          const searchDialog = Kai.createDialog('Jump', `<div><input id="page-input" type="tel" placeholder="Enter page number" class="kui-input"/></div>`, null, '', undefined, '', undefined, '', undefined, undefined, $router);
+          searchDialog.mounted = () => {
+            setTimeout(() => {
+              setTimeout(() => {
+                $router.setSoftKeyText('Cancel' , '', 'Go');
+              }, 103);
+              const KEYWORD = document.getElementById('page-input');
+              if (!KEYWORD) {
+                return;
+              }
+              KEYWORD.focus();
+              KEYWORD.value = '';
+              KEYWORD.addEventListener('keydown', (evt) => {
+                switch (evt.key) {
+                  case 'Backspace':
+                  case 'EndCall':
+                    if (document.activeElement.value.length === 0) {
+                      $router.hideBottomSheet();
+                      setTimeout(() => {
+                        KEYWORD.blur();
+                      }, 100);
+                    }
+                    break
+                  case 'SoftRight':
+                    setTimeout(() => {
+                      KEYWORD.blur();
+                      $router.hideBottomSheet();
+                      const pn = parseInt(KEYWORD.value);
+                      if (pn <= 0 || pn > pages.length) {
+                        $router.showToast('Invalid page number');
+                        return;
+                      }
+                      this.methods.gotoPage(pn - 1);
+                    }, 100);
+                    break
+                  case 'SoftLeft':
+                    setTimeout(() => {
+                      KEYWORD.blur();
+                      $router.hideBottomSheet();
+                    }, 100);
+                    break
+                }
+              });
+            });
+          }
+          searchDialog.dPadNavListener = {
+            arrowUp: function() {
+              const KEYWORD = document.getElementById('page-input');
+              KEYWORD.focus();
+            },
+            arrowDown: function() {
+              const KEYWORD = document.getElementById('page-input');
+              KEYWORD.focus();
+            }
+          }
+          $router.showBottomSheet(searchDialog);
+        },
+      },
+      dPadNavListener: {
+        arrowLeft: function() {
+          if (this.data.page <= 0)
+            return;
+          else
+            this.methods.gotoPage(this.data.page - 1);
+        },
+        arrowUp: function() {
+          if (this.verticalNavIndex <= 0)
+            return
+          this.navigateListNav(-1);
+        },
+        arrowRight: function() {
+          if (this.data.page >= pages.length - 1)
+            return;
+          else
+            this.methods.gotoPage(this.data.page + 1);
+        },
+        arrowDown: function() {
+          const listNav = document.querySelectorAll(this.verticalNavClass);
+          if (this.verticalNavIndex === listNav.length - 1)
+            return
+          this.navigateListNav(1);
+        }
+      }
+    }));
   }
   const filterCategory = function($router, type, start, end, cb) {
     const general = JSON.parse(JSON.stringify(DEFAULT_CATEGORY));
@@ -607,7 +807,7 @@ window.addEventListener("load", function() {
     verticalNavClass: '.advncdRprtNav',
     templateUrl: document.location.origin + '/templates/advancedReport.html',
     mounted: function() {
-      this.$router.setHeaderTitle('Advanced Reports');
+      this.$router.setHeaderTitle('Advanced Logs & Reports');
       var start = new Date();
       start.setHours(0);start.setMinutes(0);start.setSeconds(0);start.setMilliseconds(0);
       var end = new Date();
@@ -647,7 +847,7 @@ window.addEventListener("load", function() {
         if (this.data.start_ms > this.data.end_ms) {
           this.$router.showToast('Invalid datetime range');
         } else {
-          filterCategory(this.$router, 'Advanced Reports', this.data.start_ms, this.data.end_ms, ()=>{});
+          filterCategory(this.$router, 'Advanced Logs & Reports', this.data.start_ms, this.data.end_ms, ()=>{});
         }
       },
       center: function() {
@@ -703,10 +903,10 @@ window.addEventListener("load", function() {
         lastday.setHours(23);lastday.setMinutes(59);lastday.setSeconds(59);lastday.setMilliseconds(999);
         filterCategory($router, type, firstday, lastday, cb);
         break;
-      case 'All Timeframe':
+      case 'Entire Logs':
         filterCategory($router, type, 0, 0, cb);
         break;
-      case 'Advanced Reports':
+      case 'Advanced Logs & Reports':
         $router.push('advancedReport');
         break;
     }
@@ -780,23 +980,26 @@ window.addEventListener("load", function() {
         var menu = [
           {'text': 'Manage Category'},
           {'text': 'Logs & Reports'},
+          {'text': 'Help & Support'},
           {'text': 'Changelogs'},
           {'text': 'Exit'},
         ]
         this.$router.showOptionMenu('Menu', menu, 'SELECT', (selected) => {
           if (selected.text === 'Changelogs') {
             this.$router.push('changelogs');
+          } else if (selected.text === 'Help & Support') {
+            this.$router.push('helpSupport');
           } else if (selected.text === 'Manage Category') {
             this.$router.push('category');
           } else if (selected.text === 'Logs & Reports') {
             setTimeout(() => {
               var menu = [
-                {'text': 'All Timeframe'},
                 {'text': 'Today'},
                 {'text': 'This Week'},
                 {'text': 'This Month'},
                 {'text': 'This Year'},
-                {'text': 'Advanced Reports'},
+                {'text': 'Entire Logs'},
+                {'text': 'Advanced Logs & Reports'},
               ]
               this.$router.showOptionMenu('Logs & Reports by', menu, 'SELECT', (selected) => {
                 filterReportByType(this.$router, selected.text, this.methods.renderSoftKeyCR);
@@ -900,6 +1103,10 @@ window.addEventListener("load", function() {
       'advancedReport': {
         name: 'advancedReport',
         component: advancedReport
+      },
+      'helpSupport' : {
+        name: 'helpSupport',
+        component: helpSupport
       },
       'changelogs' : {
         name: 'changelogs',

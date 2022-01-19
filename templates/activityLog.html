@@ -1,0 +1,25 @@
+<div class="kui-flex-wrap">
+  <style>
+    pre {
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      margin:0px;
+      padding:0px;
+      width: 220px;
+    }
+  </style>
+  <ul class="kui-list kai-container">
+    {{#logs}}
+    <li class="xtvtLogNav kui-divider">
+      <span>
+        <div style="display:flex;flex-direction:row;">
+          <div style="margin:2px 3px 0 0;width:11px;height:11px;border-radius:50%;background-color:{{ category.color }};"></div>
+          <h5>{{ category.name }}</h5>
+        </div>
+        <pre style="font-size:12px;">Date: {{ start }}</pre>
+        <pre style="font-size:12px;">Duration: {{ duration_txt }}</pre>
+      </span>
+    </li>
+    {{/logs}}
+  </ul>
+</div>
