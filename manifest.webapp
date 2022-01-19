@@ -38,8 +38,8 @@
   "locales": {
     "en-US": {
       "name": "Activity Logger",
-      "subtitle": "Activity Logger",
-      "description": "Activity Logger"
+      "subtitle": "Simple and easy activity log keeper is here to help you and solve your many problems. Keep a track of your day to day activities in a very easy way. Timestamp your Activities which can even help you in creating good habits.",
+      "description": "Simple and easy activity log keeper is here to help you and solve your many problems. Keep a track of your day to day activities in a very easy way"
     }
   },
   "default_locale": "en-US"
