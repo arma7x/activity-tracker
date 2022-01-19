@@ -960,13 +960,16 @@ window.addEventListener("load", function() {
       }, 60000);
     },
     unmounted: function() {
+      this.methods.stopInterval();
       this.$state.removeStateListener(TASK_TABLE, this.methods.listenState);
-      if (window['REALTIME_ELAPSED'] != null) {
-        clearInterval(window['REALTIME_ELAPSED']);
-        window['REALTIME_ELAPSED'] = null;
-      }
     },
     methods: {
+      stopInterval: function() {
+        if (window['REALTIME_ELAPSED'] != null) {
+          clearInterval(window['REALTIME_ELAPSED']);
+          window['REALTIME_ELAPSED'] = null;
+        }
+      },
       listenState: function(data = {}) {
         localforage.getItem(CATEGORY_TABLE)
         .then((categories) => {
@@ -1057,6 +1060,7 @@ window.addEventListener("load", function() {
                 this.$router.showDialog('CANCEL Confirmation', `<span>Are you sure to <b>CANCEL</b> this activity ?</span>`, null, 'Yes', () => {
                   insertTaskDB({})
                   .then((updated_db) => {
+                    this.methods.stopInterval();
                     this.$router.showToast(`Successfully cancel activity`);
                   })
                   .catch((e) => {
@@ -1081,7 +1085,7 @@ window.addEventListener("load", function() {
         if (this.data.idle) {
           activitytEditor(this.$router, null, insertTaskDB);
         } else {
-          this.$router.showDialog('STOP Confirmation', 'Are you sure this activity is complete ?', null, 'Yes', () => {
+          this.$router.showDialog('COMPLETE Confirmation', 'Are you sure this activity is complete ?', null, 'Yes', () => {
             localforage.getItem(TASK_TABLE)
             .then((cur_activity) => {
               removeAlarm(cur_activity['alarm_id']);
@@ -1094,6 +1098,7 @@ window.addEventListener("load", function() {
               return insertTaskDB({});
             })
             .then(() => {
+              this.methods.stopInterval();
               this.$router.showToast('Success');
             })
             .catch((e) => {
@@ -1157,7 +1162,6 @@ window.addEventListener("load", function() {
   }
 
   function displayKaiAds() {
-    return;
     var display = true;
     if (window['kaiadstimer'] == null) {
       window['kaiadstimer'] = new Date();
