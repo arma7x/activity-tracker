@@ -515,7 +515,7 @@ window.addEventListener("load", function() {
               id: activity ? activity.id : t.getTime(),
               description: this.data.description.trim(),
               category: this.data.category.id,
-              reminder: parseInt(this.data.reminder.trim()),
+              reminder: parseInt(this.data.reminder),
               alarm_id: activity ? activity.alarm_id : 0,
               start: activity ? activity.start : t.getTime(),
               finish: activity ? activity.finish : 0,
