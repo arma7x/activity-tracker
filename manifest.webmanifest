@@ -24,14 +24,13 @@
     }
   ],
   "b2g_features": {
-    "version": "3.0.0",
+    "version": "3.0.1",
     "type": "web",
     "default_locale": "en-US",
     "developer": {
       "name": "arma7x",
       "url": "https://www.kaiostech.com"
     },
-    "origin": "activity-logger",
     "permissions": {
       "alarms": {
         "description": "Wake-up app"
